@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>32-bit Number Converter</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    .container { display: flex; flex-direction: column; gap: 20px; }
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+    .card-header { margin-bottom: 20px; }
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    .input-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 8px; font-weight: 500; }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    .error { color: #dc3545; font-size: 0.875rem; margin-top: 5px; }
+    .results { display: grid; grid-template-columns: 1fr; gap: 15px; }
+    @media (min-width: 768px) {
+      .results { grid-template-columns: repeat(3, 1fr); }
+    }
+    .result-box {
+      background-color: #f1f3f5;
+      padding: 15px;
+      border-radius: 6px;
+    }
+    .result-title { font-weight: 500; margin-bottom: 10px; }
+    .result-value {
+      font-family: 'Courier New', Courier, monospace;
+      word-break: break-all;
+    }
+    .binary-value { font-size: 0.8rem; }
+    .table-container {
+      max-height: 500px;
+      overflow-y: auto;
+      margin-top: 15px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+    th {
+      position: sticky;
+      top: 0;
+      background-color: white;
+      font-weight: 600;
+    }
+    .binary-cell {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <h1 class="card-title">32-bit Number Converter</h1>
+      </div>
+      <div class="card-body">
+        <div class="input-group">
+          <label for="number-input">Enter a number (decimal, hex with 0x, or binary with 0b)</label>
+          <input type="text" id="number-input" placeholder="e.g. 42, 0x2A, or 0b101010">
+          <div id="error-message" class="error"></div>
+        </div>
+
+        <div class="results">
+          <div class="result-box">
+            <div class="result-title">Decimal</div>
+            <div id="decimal-result" class="result-value">-</div>
+          </div>
+          <div class="result-box">
+            <div class="result-title">Hexadecimal (8 digits)</div>
+            <div id="hex-result" class="result-value">-</div>
+          </div>
+          <div class="result-box">
+            <div class="result-title">Binary (32-bit)</div>
+            <div id="binary-result" class="result-value binary-value">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Conversion Table (1-1000)</h2>
+      </div>
+      <div class="card-body">
+        <div class="table-container">
+          <table id="conversion-table">
+            <thead>
+              <tr>
+                <th>Decimal</th>
+                <th>Hexadecimal</th>
+                <th>Binary (32-bit)</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const numberInput = document.getElementById('number-input');
+      const errorMessage = document.getElementById('error-message');
+      const decimalResult = document.getElementById('decimal-result');
+      const hexResult = document.getElementById('hex-result');
+      const binaryResult = document.getElementById('binary-result');
+      const tableBody = document.getElementById('table-body');
+
+      function formatBinary(num) {
+        // Handle negative numbers using two's complement
+        if (num < 0) {
+          num = 0xFFFFFFFF + num + 1;
+        }
+        const binaryStr = num.toString(2);
+        const paddedBinary = binaryStr.padStart(32, '0');
+        return `0b${paddedBinary.match(/.{1,8}/g).join(' ')}`;
+      }
+
+      function convertNumber(value) {
+        errorMessage.textContent = '';
+        if (value === '') {
+          return { decimal: '-', hex: '-', binary: '-' };
+        }
+
+        try {
+          let num;
+          if (value.startsWith('0x')) {
+            num = parseInt(value, 16);
+          } else if (value.startsWith('0b')) {
+            num = parseInt(value.slice(2), 2);
+          } else {
+            num = parseInt(value, 10);
+          }
+
+          if (isNaN(num)) {
+            throw new Error('Invalid number format');
+          }
+
+          // Handle 32-bit signed integer range
+          if (num > 2147483647 || num < -2147483648) {
+            throw new Error('Number out of 32-bit range (-2,147,483,648 to 2,147,483,647)');
+          }
+
+          return {
+            decimal: num.toString(10),
+            hex: '0x' + (num >>> 0).toString(16).toUpperCase().padStart(8, '0'),
+            binary: formatBinary(num)
+          };
+        } catch (err) {
+          errorMessage.textContent = err.message;
+          return { decimal: '-', hex: '-', binary: '-' };
+        }
+      }
+
+      function updateResults() {
+        const converted = convertNumber(numberInput.value.trim());
+        decimalResult.textContent = converted.decimal;
+        hexResult.textContent = converted.hex;
+        binaryResult.textContent = converted.binary;
+      }
+
+      function generateTable() {
+        let tableHtml = '';
+        for (let i = 1; i <= 1000; i++) {
+          tableHtml += `
+            <tr>
+              <td>${i}</td>
+              <td>0x${i.toString(16).toUpperCase().padStart(8, '0')}</td>
+              <td class="binary-cell">${formatBinary(i)}</td>
+            </tr>
+          `;
+        }
+        tableBody.innerHTML = tableHtml;
+      }
+
+      numberInput.addEventListener('input', updateResults);
+      generateTable();
+    });
+  </script>
+</body>
+</html>
