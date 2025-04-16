@@ -3,71 +3,100 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A tool to convert 32-bit numbers to decimal, hexadecimal, and binary formats.">
   <title>32-bit Number Converter</title>
   <style>
+    :root {
+      --primary-color: #333;
+      --background-color: #f8f9fa;
+      --card-bg: white;
+      --border-color: #ddd;
+      --error-color: #dc3545;
+      --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: var(--font-family);
       line-height: 1.6;
-      color: #333;
+      color: var(--primary-color);
       max-width: 1200px;
       margin: 0 auto;
       padding: 20px;
-      background-color: #f8f9fa;
+      background-color: var(--background-color);
     }
+
     .container { display: flex; flex-direction: column; gap: 20px; }
     .card {
-      background-color: white;
+      background-color: var(--card-bg);
       border-radius: 8px;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
       padding: 20px;
     }
+
     .card-header { margin-bottom: 20px; }
     .card-title {
       font-size: 1.5rem;
       font-weight: 600;
       margin: 0;
     }
+
     .input-group { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 500; }
     input {
       width: 100%;
       padding: 10px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-color);
       border-radius: 4px;
       font-size: 1rem;
     }
-    .error { color: #dc3545; font-size: 0.875rem; margin-top: 5px; }
+
+    .error { color: var(--error-color); font-size: 0.875rem; margin-top: 5px; }
     .results { display: grid; grid-template-columns: 1fr; gap: 15px; }
     @media (min-width: 768px) {
       .results { grid-template-columns: repeat(3, 1fr); }
     }
+
     .result-box {
       background-color: #f1f3f5;
       padding: 15px;
       border-radius: 6px;
     }
+
     .result-title { font-weight: 500; margin-bottom: 10px; }
     .result-value {
       font-family: 'Courier New', Courier, monospace;
       word-break: break-all;
     }
+
     .binary-value { font-size: 0.8rem; }
     .table-container {
       max-height: 500px;
       overflow-y: auto;
       margin-top: 15px;
     }
+
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border-color); }
     th {
       position: sticky;
       top: 0;
-      background-color: white;
+      background-color: var(--card-bg);
       font-weight: 600;
     }
+
     .binary-cell {
       font-family: 'Courier New', Courier, monospace;
       font-size: 0.8rem;
+    }
+
+    @media (max-width: 576px) {
+      .results { grid-template-columns: 1fr; }
+      table {
+        font-size: 0.8rem;
+      }
+      .binary-cell {
+        display: none; /* Hide binary column on mobile */
+      }
     }
   </style>
 </head>
@@ -79,8 +108,9 @@
       </div>
       <div class="card-body">
         <div class="input-group">
-          <label for="number-input">Enter a number (decimal, hex with 0x, or binary with 0b)</label>
-          <input type="text" id="number-input" placeholder="e.g. 42, 0x2A, or 0b101010">
+          <label for="number-input" aria-describedby="number-input-desc">Enter a number</label>
+          <p id="number-input-desc">Provide a decimal, hexadecimal (0x), or binary (0b).</p>
+          <input type="text" id="number-input" placeholder="e.g., 42 (decimal), 0x2A (hex), or 0b101010 (binary)">
           <div id="error-message" class="error"></div>
         </div>
 
@@ -122,6 +152,7 @@
     </div>
   </div>
 
+  <button id="reset-button">Reset</button>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const numberInput = document.getElementById('number-input');
@@ -130,9 +161,17 @@
       const hexResult = document.getElementById('hex-result');
       const binaryResult = document.getElementById('binary-result');
       const tableBody = document.getElementById('table-body');
+      const resetButton = document.getElementById('reset-button');
+
+      function debounce(func, delay = 300) {
+        let timeoutId;
+        return function (...args) {
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => func.apply(this, args), delay);
+        };
+      }
 
       function formatBinary(num) {
-        // Handle negative numbers using two's complement
         if (num < 0) {
           num = 0xFFFFFFFF + num + 1;
         }
@@ -141,9 +180,18 @@
         return `0b${paddedBinary.match(/.{1,8}/g).join(' ')}`;
       }
 
+      function validateInput(value) {
+        const decimalRegex = /^-?\d+$/;
+        const hexRegex = /^0x[0-9A-Fa-f]+$/;
+        const binaryRegex = /^0b[01]+$/;
+
+        return decimalRegex.test(value) || hexRegex.test(value) || binaryRegex.test(value);
+      }
+
       function convertNumber(value) {
         errorMessage.textContent = '';
-        if (value === '') {
+        if (value === '' || !validateInput(value)) {
+          errorMessage.textContent = 'Invalid input. Please enter a valid decimal, hex (0x), or binary (0b) number.';
           return { decimal: '-', hex: '-', binary: '-' };
         }
 
@@ -161,7 +209,6 @@
             throw new Error('Invalid number format');
           }
 
-          // Handle 32-bit signed integer range
           if (num > 2147483647 || num < -2147483648) {
             throw new Error('Number out of 32-bit range (-2,147,483,648 to 2,147,483,647)');
           }
@@ -185,20 +232,25 @@
       }
 
       function generateTable() {
-        let tableHtml = '';
+        const rows = [];
         for (let i = 1; i <= 1000; i++) {
-          tableHtml += `
+          rows.push(`
             <tr>
               <td>${i}</td>
               <td>0x${i.toString(16).toUpperCase().padStart(8, '0')}</td>
               <td class="binary-cell">${formatBinary(i)}</td>
             </tr>
-          `;
+          `);
         }
-        tableBody.innerHTML = tableHtml;
+        tableBody.innerHTML = rows.join('');
       }
 
-      numberInput.addEventListener('input', updateResults);
+      resetButton.addEventListener('click', () => {
+        numberInput.value = '';
+        updateResults();
+      });
+
+      numberInput.addEventListener('input', debounce(updateResults));
       generateTable();
     });
   </script>
